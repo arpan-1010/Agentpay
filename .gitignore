@@ -1,0 +1,11 @@
+node_modules
+.env
+.env.*
+bun.lock.bak
+.next
+dist
+out
+cache
+broadcast
+*.log
+.DS_Store

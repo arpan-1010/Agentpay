@@ -1,0 +1,15 @@
+{
+  "name": "agentpay",
+  "private": true,
+  "workspaces": ["agent", "paid-api", "web"],
+  "scripts": {
+    "agent": "bun --filter agent dev",
+    "paid-api": "bun --filter paid-api dev",
+    "web": "bun --filter web dev",
+    "typecheck": "bun --filter '*' typecheck"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "typescript": "^7.0.2"
+  }
+}

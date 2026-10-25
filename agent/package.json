@@ -1,0 +1,28 @@
+{
+  "name": "agent",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "@types/node": "^26.6.5"
+  },
+  "peerDependencies": {
+    "typescript": "^7.0.2"
+  },
+  "scripts": {
+    "dev": "bun run src/run.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^4.0.105",
+    "@ai-sdk/openai-compatible": "^3.0.78",
+    "@huggingface/inference": "^4.13.32",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "ai": "^7.0.153",
+    "hono": "^4.13.14",
+    "permissionless": "^0.5.2",
+    "viem": "^2.57.11",
+    "zod": "^4.6.7"
+  }
+}
