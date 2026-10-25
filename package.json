@@ -1,12 +1,16 @@
 {
   "name": "agentpay",
   "private": true,
-  "workspaces": ["agent", "paid-api", "web"],
+  "workspaces": [
+    "agent-ts",
+    "paid-api",
+    "web"
+  ],
   "scripts": {
-    "agent": "bun --filter agent dev",
+    "agent": "cargo run -p agent",
+    "agent:ts": "bun --filter agent-ts dev",
     "paid-api": "bun --filter paid-api dev",
-    "web": "bun --filter web dev",
-    "typecheck": "bun --filter '*' typecheck"
+    "web": "bun --filter web dev"
   },
   "devDependencies": {
     "@types/bun": "^1.4.4",
