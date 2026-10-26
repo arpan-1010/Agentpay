@@ -1,6 +1,6 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 pub struct LlmProvider {
     pub name: &'static str,
@@ -64,13 +64,28 @@ pub struct Message {
 
 impl Message {
     pub fn system(text: &str) -> Self {
-        Self { role: "system".into(), content: Some(text.into()), tool_calls: None, tool_call_id: None }
+        Self {
+            role: "system".into(),
+            content: Some(text.into()),
+            tool_calls: None,
+            tool_call_id: None,
+        }
     }
     pub fn user(text: &str) -> Self {
-        Self { role: "user".into(), content: Some(text.into()), tool_calls: None, tool_call_id: None }
+        Self {
+            role: "user".into(),
+            content: Some(text.into()),
+            tool_calls: None,
+            tool_call_id: None,
+        }
     }
     pub fn tool_result(id: String, content: String) -> Self {
-        Self { role: "tool".into(), content: Some(content), tool_calls: None, tool_call_id: Some(id) }
+        Self {
+            role: "tool".into(),
+            content: Some(content),
+            tool_calls: None,
+            tool_call_id: Some(id),
+        }
     }
 }
 

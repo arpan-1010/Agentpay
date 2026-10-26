@@ -1,6 +1,6 @@
 use alloy::primitives::Address;
 use anyhow::Context;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::wallet::WalletClient;
 
@@ -14,11 +14,21 @@ pub fn definitions() -> Value {
                 "parameters": { "type": "object", "properties": {} }
             }
         },
+
+        {
+            "type": "function",
+            "function": {
+                "name": "get_policy",
+                "description": "Get the wallet's spending limits: per-transaction cap, daily cap, how much can still be spent today, and when the agent key expires.",
+                "parameters": { "type": "object", "properties": {} }
+            }
+        },
+
         {
             "type": "function",
             "function": {
                 "name": "send_usdc",
-                "description": "Send USDC from the wallet to an address. Only call this when the user explicitly asks to send money.",
+                "description": "Send USDC from the wallet to an address. Only call this when the user explicitly asks to send money. The wallet contract enforces spending limits and an allowlist; if a payment is refused, report the reason to the user.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -48,6 +58,16 @@ async fn dispatch(wallet: &WalletClient, name: &str, args: &str) -> anyhow::Resu
             "usdc": wallet.usdc_balance().await?,
             "agent_gas_eth": wallet.agent_gas_balance().await?,
         })),
+
+        "get_policy" => {
+            let p = wallet.policy().await?;
+            Ok(json!({
+                "max_per_tx_usdc": p.max_per_tx,
+                "max_per_day_usdc": p.max_per_day,
+                "remaining_today_usdc": p.remaining_today,
+                "agent_expires_in_hours": p.agent_expires_in_hours,
+            }))
+        }
 
         "send_usdc" => {
             let to = args["to"].as_str().context("missing 'to'")?;

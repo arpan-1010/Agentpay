@@ -19,6 +19,11 @@ async fn main() -> anyhow::Result<()> {
             println!("USDC balance:    {}", client.usdc_balance().await?);
             println!("agent address:   {}", client.agent_address);
             println!("agent gas (ETH): {}", client.agent_gas_balance().await?);
+            let p = client.policy().await?;
+            println!("per-tx limit:   {} USDC", p.max_per_tx);
+            println!("daily limit:    {} USDC", p.max_per_day);
+            println!("left today:     {} USDC", p.remaining_today);
+            println!("agent expires:  in {} hours", p.agent_expires_in_hours);
         }
         Some("send") => {
             let (Some(to), Some(amount)) = (args.get(1), args.get(2)) else {
