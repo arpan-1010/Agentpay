@@ -1,24 +1,43 @@
-use alloy::primitives::{utils::format_ether, Address};
-use alloy::providers::{Provider, ProviderBuilder};
+use alloy::primitives::Address;
+use wallet::WalletClient;
+
+mod agent;
+mod llm;
+mod tools;
+mod wallet;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Load .env (searches the current folder and parent folders)
     dotenvy::dotenv().ok();
 
-    // Connect to Base Sepolia over plain HTTP RPC
-    let rpc_url = std::env::var("BASE_SEPOLIA_RPC_URL")
-        .unwrap_or_else(|_| "https://sepolia.base.org".to_string());
-    let provider = ProviderBuilder::new().connect_http(rpc_url.parse()?);
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let client = WalletClient::from_env().await?;
 
-    // Ask the node which chain we are on. Base Sepolia should say 84532.
-    let chain_id = provider.get_chain_id().await?;
-    println!("chain id: {chain_id}");
-
-    // Read the owner's ETH balance
-    let owner: Address = std::env::var("OWNER_ADDRESS")?.parse()?;
-    let balance = provider.get_balance(owner).await?;
-    println!("owner {owner} has {} ETH", format_ether(balance));
+    match args.first().map(String::as_str) {
+        Some("balance") => {
+            println!("wallet contract: {}", client.wallet_address);
+            println!("USDC balance:    {}", client.usdc_balance().await?);
+            println!("agent address:   {}", client.agent_address);
+            println!("agent gas (ETH): {}", client.agent_gas_balance().await?);
+        }
+        Some("send") => {
+            let (Some(to), Some(amount)) = (args.get(1), args.get(2)) else {
+                anyhow::bail!("usage: send <address> <amount>");
+            };
+            let to: Address = to.parse()?;
+            let hash = client.transfer_usdc(to, amount).await?;
+            println!("sent. tx hash: {hash}");
+        }
+        Some("ask") => {
+            let prompt = args[1..].join(" ");
+            if prompt.trim().is_empty() {
+                anyhow::bail!("usage: ask <what you want the agent to do>");
+            }
+            let answer = agent::run(&client, &prompt).await?;
+            println!("\n[answer]\n{answer}");
+        }
+        _ => println!("usage:\n  balance\n  send <address> <amount> ask <prompt>"),
+    }
 
     Ok(())
 }
