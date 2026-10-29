@@ -1,14 +1,14 @@
 use alloy::{
     network::EthereumWallet,
     primitives::{
-        utils::{format_ether, format_units, parse_units},
         Address, TxHash, U256,
+        utils::{format_ether, format_units, parse_units},
     },
     providers::{DynProvider, Provider, ProviderBuilder},
     signers::local::PrivateKeySigner,
     sol,
 };
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 sol! {
@@ -43,7 +43,7 @@ pub struct WalletClient {
     provider: DynProvider,
     pub agent_address: Address,
     pub wallet_address: Address,
-    usdc: Address,
+    pub usdc: Address,
 }
 
 pub struct Policy {
@@ -90,7 +90,12 @@ impl WalletClient {
             );
         }
 
-        Ok(Self { provider, agent_address, wallet_address, usdc })
+        Ok(Self {
+            provider,
+            agent_address,
+            wallet_address,
+            usdc,
+        })
     }
 
     pub async fn usdc_balance(&self) -> Result<String> {
@@ -104,7 +109,7 @@ impl WalletClient {
     pub async fn policy(&self) -> Result<Policy> {
         let c = IAgentWallet::new(self.wallet_address, self.provider.clone());
 
-                let expiry = c.agentExpiry().call().await.context(
+        let expiry = c.agentExpiry().call().await.context(
             "agentExpiry() reverted: AGENT_WALLET_ADDRESS is probably the old wallet without the spending policy",
         )?;
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
@@ -134,7 +139,10 @@ impl WalletClient {
         let call = contract.transferUSDC(to, amount).from(self.agent_address);
 
         if let Err(e) = call.call().await {
-            bail!("simulation failed, nothing was sent: {}", explain_revert(&e));
+            bail!(
+                "simulation failed, nothing was sent: {}",
+                explain_revert(&e)
+            );
         }
         println!("simulation ok");
 
@@ -146,7 +154,7 @@ impl WalletClient {
     }
 }
 
-fn usdc_str(v: U256) -> String {
+pub fn usdc_str(v: U256) -> String {
     format_units(v, USDC_DECIMALS).unwrap_or_else(|_| v.to_string())
 }
 

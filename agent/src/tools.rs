@@ -3,6 +3,7 @@ use anyhow::Context;
 use serde_json::{Value, json};
 
 use crate::wallet::WalletClient;
+use crate::x402::PaidApi;
 
 pub fn definitions() -> Value {
     json!([
@@ -39,18 +40,41 @@ pub fn definitions() -> Value {
                     "required": ["to", "amount", "reason"]
                 }
             }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "list_paid_apis",
+                "description": "List the paid data APIs with price per call in USDC and the fields each returns. Free to call. Also shows the remaining spending budget for this task.",
+                "parameters": { "type": "object", "properties": {} }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "pay_for_api",
+                "description": "Call one paid API by path (e.g. \"/api/price/basic\"). If it asks for payment, this pays from the wallet within the task budget and returns the data. Only use paths from list_paid_apis.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": { "type": "string", "description": "API path from list_paid_apis" },
+                        "reason": { "type": "string", "description": "Why this API was chosen over the others" }
+                    },
+                    "required": ["path", "reason"]
+                }
+            }
         }
     ])
 }
 
-pub async fn run_tool(wallet: &WalletClient, name: &str, args: &str) -> String {
-    match dispatch(wallet, name, args).await {
+pub async fn run_tool(wallet: &WalletClient, paid: &PaidApi, name: &str, args: &str) -> String {
+    match dispatch(wallet, paid, name, args).await {
         Ok(v) => v.to_string(),
         Err(e) => json!({ "error": format!("{e:#}") }).to_string(),
     }
 }
 
-async fn dispatch(wallet: &WalletClient, name: &str, args: &str) -> anyhow::Result<Value> {
+async fn dispatch(wallet: &WalletClient, paid: &PaidApi, name: &str, args: &str) -> anyhow::Result<Value> {
     let args: Value = serde_json::from_str(args).context("tool arguments were not valid JSON")?;
 
     match name {
@@ -83,6 +107,15 @@ async fn dispatch(wallet: &WalletClient, name: &str, args: &str) -> anyhow::Resu
             println!("[tool] send_usdc to={to} amount={amount} reason={reason}");
             let hash = wallet.transfer_usdc(to, &amount).await?;
             Ok(json!({ "ok": true, "tx_hash": hash.to_string() }))
+        }
+
+                "list_paid_apis" => paid.catalog().await,
+
+        "pay_for_api" => {
+            let path = args["path"].as_str().context("missing 'path'")?;
+            let reason = args["reason"].as_str().unwrap_or("(none given)");
+            println!("[tool] pay_for_api path={path} reason={reason}");
+            paid.pay_and_fetch(wallet, path, reason).await
         }
 
         other => anyhow::bail!("unknown tool: {other}"),

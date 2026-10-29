@@ -10,3 +10,4 @@ broadcast
 *.log
 .DS_Store
 target/
+payments.jsonl

@@ -5,6 +5,7 @@ mod agent;
 mod llm;
 mod tools;
 mod wallet;
+mod x402;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -12,6 +13,7 @@ async fn main() -> anyhow::Result<()> {
 
     let args: Vec<String> = std::env::args().skip(1).collect();
     let client = WalletClient::from_env().await?;
+    let paid = x402::PaidApi::from_env()?;
 
     match args.first().map(String::as_str) {
         Some("balance") => {
@@ -38,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
             if prompt.trim().is_empty() {
                 anyhow::bail!("usage: ask <what you want the agent to do>");
             }
-            let answer = agent::run(&client, &prompt).await?;
+            let answer = agent::run(&client, &paid, &prompt).await?;
             println!("\n[answer]\n{answer}");
         }
         _ => println!("usage:\n  balance\n  send <address> <amount> ask <prompt>"),

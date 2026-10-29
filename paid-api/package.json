@@ -9,7 +9,11 @@
   "peerDependencies": {
     "typescript": "^7.0.2"
   },
+  "scripts": {
+    "dev": "bun --watch index.ts"
+  },
   "dependencies": {
+    "@types/node": "^26.6.6",
     "hono": "^4.13.14",
     "viem": "^2.57.11"
   }
