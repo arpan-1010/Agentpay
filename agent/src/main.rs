@@ -6,6 +6,8 @@ mod llm;
 mod tools;
 mod wallet;
 mod x402;
+mod approval;
+mod killswitch;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -43,7 +45,14 @@ async fn main() -> anyhow::Result<()> {
             let answer = agent::run(&client, &paid, &prompt).await?;
             println!("\n[answer]\n{answer}");
         }
-        _ => println!("usage:\n  balance\n  send <address> <amount> ask <prompt>"),
+                Some("pay") => {
+            let Some(path) = args.get(1) else {
+                anyhow::bail!("usage: pay <path>");
+            };
+            let out = paid.pay_and_fetch(&client, path, "manual test").await?;
+            println!("{out}");
+        }
+                _ => println!("usage:\n  balance\n  send <address> <amount>\n  pay <path>\n  ask <prompt>"),
     }
 
     Ok(())

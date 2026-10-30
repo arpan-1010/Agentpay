@@ -10,7 +10,8 @@
     "agent": "cargo run -p agent",
     "agent:ts": "bun --filter agent-ts dev",
     "paid-api": "bun --filter paid-api dev",
-    "web": "bun --filter web dev"
+    "web": "bun --filter web dev",
+    "kill-switch": "bash scripts/kill.sh"
   },
   "devDependencies": {
     "@types/bun": "^1.4.4",

@@ -1,4 +1,4 @@
-use alloy::primitives::Address;
+use alloy::primitives::{utils::parse_units, Address, U256};
 use anyhow::Context;
 use serde_json::{Value, json};
 
@@ -103,7 +103,11 @@ async fn dispatch(wallet: &WalletClient, paid: &PaidApi, name: &str, args: &str)
             let reason = args["reason"].as_str().unwrap_or("(none given)");
 
             let to: Address = to.parse().context("'to' is not a valid address")?;
+            let amount_u256: U256 = parse_units(&amount, 6u8)
+                .context("amount is not a valid number")?
+                .into();
 
+            crate::approval::confirm(to, amount_u256, reason).await?;
             println!("[tool] send_usdc to={to} amount={amount} reason={reason}");
             let hash = wallet.transfer_usdc(to, &amount).await?;
             Ok(json!({ "ok": true, "tx_hash": hash.to_string() }))

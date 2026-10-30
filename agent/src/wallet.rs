@@ -128,6 +128,7 @@ impl WalletClient {
     }
 
     pub async fn transfer_usdc(&self, to: Address, amount: &str) -> Result<TxHash> {
+        crate::killswitch::ensure_running()?;
         let amount: U256 = parse_units(amount, USDC_DECIMALS)
             .context("amount is not a valid number")?
             .into();

@@ -11,3 +11,5 @@ broadcast
 .DS_Store
 target/
 payments.jsonl
+used-tx.sqlite*
+KILL
