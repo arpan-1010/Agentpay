@@ -1,10 +1,10 @@
 use anyhow::{Result, bail};
 use std::time::Duration;
 
+use crate::killswitch;
 use crate::llm::{self, Message, PROVIDERS};
 use crate::tools;
 use crate::wallet::WalletClient;
-use crate::killswitch;
 
 use crate::x402::PaidApi;
 const MAX_STEPS: usize = 8;
@@ -62,7 +62,8 @@ pub async fn run(wallet: &WalletClient, paid: &PaidApi, prompt: &str) -> Result<
                 "[step {step}] tool call: {} {}",
                 call.function.name, call.function.arguments
             );
-            let result = tools::run_tool(wallet, paid, &call.function.name, &call.function.arguments).await;
+            let result =
+                tools::run_tool(wallet, paid, &call.function.name, &call.function.arguments).await;
             println!("[step {step}] tool result: {result}");
             messages.push(Message::tool_result(call.id, result));
         }

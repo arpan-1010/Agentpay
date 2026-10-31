@@ -2,18 +2,24 @@ use alloy::primitives::Address;
 use wallet::WalletClient;
 
 mod agent;
+mod approval;
+mod events;
+mod killswitch;
 mod llm;
+mod server;
 mod tools;
 mod wallet;
 mod x402;
-mod approval;
-mod killswitch;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
 
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("serve") {
+        let client = WalletClient::connect().await?;
+        return server::run(client).await;
+    }
     let client = WalletClient::from_env().await?;
     let paid = x402::PaidApi::from_env()?;
 
@@ -45,14 +51,16 @@ async fn main() -> anyhow::Result<()> {
             let answer = agent::run(&client, &paid, &prompt).await?;
             println!("\n[answer]\n{answer}");
         }
-                Some("pay") => {
+        Some("pay") => {
             let Some(path) = args.get(1) else {
                 anyhow::bail!("usage: pay <path>");
             };
             let out = paid.pay_and_fetch(&client, path, "manual test").await?;
             println!("{out}");
         }
-                _ => println!("usage:\n  balance\n  send <address> <amount>\n  pay <path>\n  ask <prompt>"),
+        _ => println!(
+            "usage:\n  balance\n  send <address> <amount>\n  pay <path>\n  ask <prompt>\n  serve"
+        ),
     }
 
     Ok(())

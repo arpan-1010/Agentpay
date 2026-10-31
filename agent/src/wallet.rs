@@ -17,7 +17,7 @@ sol! {
         function balanceOf(address account) external view returns (uint256);
     }
 
-        #[sol(rpc)]
+    #[sol(rpc)]
     interface IAgentWallet {
         error NotAgent();
         error AgentExpired();
@@ -51,10 +51,24 @@ pub struct Policy {
     pub max_per_day: String,
     pub remaining_today: String,
     pub agent_expires_in_hours: i64,
+    pub agent_expired: bool,
 }
 
 impl WalletClient {
     pub async fn from_env() -> Result<Self> {
+        let me = Self::connect().await?;
+        let registered = me.registered_agent().await?;
+        if registered != me.agent_address {
+            bail!(
+                "signer {} is not the registered agent ({registered}); \
+                 was the agent revoked or replaced?",
+                me.agent_address
+            );
+        }
+        Ok(me)
+    }
+
+    pub async fn connect() -> Result<Self> {
         let rpc = std::env::var("BASE_SEPOLIA_RPC_URL")
             .unwrap_or_else(|_| "https://sepolia.base.org".to_string());
 
@@ -78,24 +92,20 @@ impl WalletClient {
             .connect_http(rpc.parse()?)
             .erased();
 
-        let registered = IAgentWallet::new(wallet_address, provider.clone())
-            .agent()
-            .call()
-            .await
-            .context("could not read agent() from the wallet contract")?;
-        if registered != agent_address {
-            bail!(
-                "signer {agent_address} is not the registered agent ({registered}); \
-                 was the agent revoked or replaced?"
-            );
-        }
-
         Ok(Self {
             provider,
             agent_address,
             wallet_address,
             usdc,
         })
+    }
+
+    pub async fn registered_agent(&self) -> Result<Address> {
+        IAgentWallet::new(self.wallet_address, self.provider.clone())
+            .agent()
+            .call()
+            .await
+            .context("could not read agent() from the wallet contract")
     }
 
     pub async fn usdc_balance(&self) -> Result<String> {
@@ -119,6 +129,7 @@ impl WalletClient {
             max_per_day: usdc_str(c.maxPerDay().call().await?),
             remaining_today: usdc_str(c.remainingToday().call().await?),
             agent_expires_in_hours: (expiry as i64 - now as i64) / 3600,
+            agent_expired: expiry <= now,
         })
     }
 
@@ -152,6 +163,14 @@ impl WalletClient {
             bail!("transaction {} reverted on-chain", receipt.transaction_hash);
         }
         Ok(receipt.transaction_hash)
+    }
+    pub async fn is_allowed(&self, to: Address) -> Result<bool> {
+        Ok(
+            IAgentWallet::new(self.wallet_address, self.provider.clone())
+                .isAllowedRecipient(to)
+                .call()
+                .await?,
+        )
     }
 }
 

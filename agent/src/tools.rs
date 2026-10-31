@@ -1,7 +1,8 @@
-use alloy::primitives::{utils::parse_units, Address, U256};
+use alloy::primitives::{Address, U256, utils::parse_units};
 use anyhow::Context;
 use serde_json::{Value, json};
 
+use crate::events;
 use crate::wallet::WalletClient;
 use crate::x402::PaidApi;
 
@@ -74,7 +75,12 @@ pub async fn run_tool(wallet: &WalletClient, paid: &PaidApi, name: &str, args: &
     }
 }
 
-async fn dispatch(wallet: &WalletClient, paid: &PaidApi, name: &str, args: &str) -> anyhow::Result<Value> {
+async fn dispatch(
+    wallet: &WalletClient,
+    paid: &PaidApi,
+    name: &str,
+    args: &str,
+) -> anyhow::Result<Value> {
     let args: Value = serde_json::from_str(args).context("tool arguments were not valid JSON")?;
 
     match name {
@@ -107,13 +113,49 @@ async fn dispatch(wallet: &WalletClient, paid: &PaidApi, name: &str, args: &str)
                 .context("amount is not a valid number")?
                 .into();
 
-            crate::approval::confirm(to, amount_u256, reason).await?;
+            if let Err(e) = crate::approval::confirm(to, amount_u256, "Send USDC", reason).await {
+                events::record(
+                    "declined",
+                    &amount,
+                    &to.to_string(),
+                    "Send USDC",
+                    reason,
+                    None,
+                    Some(events::declined_note(&e)),
+                );
+                return Err(e);
+            }
+
             println!("[tool] send_usdc to={to} amount={amount} reason={reason}");
-            let hash = wallet.transfer_usdc(to, &amount).await?;
-            Ok(json!({ "ok": true, "tx_hash": hash.to_string() }))
+            match wallet.transfer_usdc(to, &amount).await {
+                Ok(hash) => {
+                    events::record(
+                        "paid",
+                        &amount,
+                        &to.to_string(),
+                        "Send USDC",
+                        reason,
+                        Some(&hash.to_string()),
+                        None,
+                    );
+                    Ok(json!({ "ok": true, "tx_hash": hash.to_string() }))
+                }
+                Err(e) => {
+                    events::record(
+                        "blocked",
+                        &amount,
+                        &to.to_string(),
+                        "Send USDC",
+                        reason,
+                        None,
+                        Some(&events::blocked_note(&e)),
+                    );
+                    Err(e)
+                }
+            }
         }
 
-                "list_paid_apis" => paid.catalog().await,
+        "list_paid_apis" => paid.catalog().await,
 
         "pay_for_api" => {
             let path = args["path"].as_str().context("missing 'path'")?;
