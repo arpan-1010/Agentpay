@@ -37,3 +37,12 @@ export function isSameOrigin(req: Request, requireOrigin = false): boolean {
     return false;
   }
 }
+
+export const DEMO_READONLY = process.env.DEMO_READONLY === "1";
+
+export function demoBlocked(): Response {
+  return Response.json(
+    { error: "This is a read-only public demo" },
+    { status: 403 },
+  );
+}
