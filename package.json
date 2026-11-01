@@ -2,7 +2,7 @@
   "name": "agentpay",
   "private": true,
   "workspaces": [
-    "agent-ts",
+    "agent",
     "paid-api",
     "web"
   ],
